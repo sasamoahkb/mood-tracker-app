@@ -22,8 +22,8 @@ A mood tracking application.
 - HTML
 - Tailwind CSS
 
-  ### Backend (middle-ware & Database)
-  - Node.js
-  - Express.js
-  - PostgreSQL
+### Backend (middle-ware & Database)
+- Node.js
+- Express.js
+- PostgreSQL
  
