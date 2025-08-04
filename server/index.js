@@ -37,13 +37,16 @@ app.post('/signup', async (req, res) => {
 
 // --- LOGIN ---
 app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    try { 
+        const { email, password } = req.body;
 
-    const result = await Users.verifyUser(email, password);
-    if (!result.success) return res.status(400).json({ error: result.error });
+        const result = await Users.verifyUser(email, password);
+        if (!result.success) return res.status(400).json({ error: result.error });
 
-    const token = jwt.sign({ user_id: result.data.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: result.data });
+        const token = jwt.sign({ user_id: result.data.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, user: result.data });
+    } catch (err) {
+        res.status(500).json({ error: err.message })};
 });
 
 app.post('login', async (req, res) => {
@@ -61,10 +64,11 @@ app.post('login', async (req, res) => {
 )
 
 // Mood routes
-app.post('api/create-mood-entry', authenticate, async (req, res) => {
+app.post('create-mood-entry', authenticate, async (req, res) => {
     try {
         const userId = req.user.user_id; // Get user ID from auth middleware
-        const moods = await Moods.createMoodEntry(userId, req.body);
+        const data = req.body;
+        const moods = await Moods.createMoodEntry(userId, data);
 
         if (!result.success) {
         return res.status(400).json({ error: result.error });
