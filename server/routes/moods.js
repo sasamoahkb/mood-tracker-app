@@ -24,8 +24,8 @@ class Moods {
         }
 
         if (factors) {
-            if (!Array.isArray(factors)) return res.send(400).json({error: 'Factors must be an array'});
-            if (factors.length > 3) return res.send(400).json({error: 'You can only select up to 3 factors'});
+            if (!Array.isArray(factors)) return 'Factors must be an array';
+            if (factors.length > 3) return 'You can only select up to 3 factors';
             for (const f of factors) {
                 if (
                     typeof f.factor_id !== 'number' ||
@@ -75,3 +75,13 @@ class Moods {
 }
 
 module.exports = Moods;
+
+// Express route receives request → calls createMoodEntry()
+//   ↓
+// createMoodEntry() calls isValidMoodEntry() to validate data
+//   ↓
+// Destructure values (mood, rating, notes, location, factors)
+//   ↓
+// Insert into mood_entries
+//   ↓
+// For each factor → insert into mood_factors

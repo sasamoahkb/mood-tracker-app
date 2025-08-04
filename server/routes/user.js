@@ -9,8 +9,10 @@ class Users {
     }
 
     static isValidPassword(password) {
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-        return typeof password === 'string' && passwordRegex.test(password);
+        if (typeof password !== 'string' || password.length < 1)
+            throw new Error('Password is required');
+        // const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        // return typeof password === 'string' && passwordRegex.test(password);
     
     }
     static validatePassword(password) {
@@ -108,8 +110,8 @@ class Users {
             }
 
             if (updates.password) {
-                if (!this.isValidPassword(updates.password)) throw new Error('Invalid password');
-                const password_hash = await bcrypt.hash(updates.password, 10);
+                const passwordError = this.validatePassword(updates.password);
+                if (passwordError) throw new Error(passwordError);                const password_hash = await bcrypt.hash(updates.password, 10);
                 fields.push('password = ?');
                 values.push(password_hash);
             }
@@ -148,7 +150,7 @@ class Users {
             const { data: user } = await this.getUserByEmail(email);
             if (!user) throw new Error('User not found');
 
-            const match = await bcrypt.compare(password, user.password_hash);
+            const match = await bcrypt.compare(password, user.password);
             if (!match) throw new Error('Incorrect password');
 
             return { success: true, data: user };
@@ -156,6 +158,14 @@ class Users {
             return { success: false, error: err.message };
         }
     }
+
+    static generateToken(user) {
+    const payload = {
+        user_id: user.user_id,
+        email: user.email
+    };
+    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+}
 }
 
 module.exports = Users;

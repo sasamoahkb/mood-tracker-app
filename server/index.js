@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const db = require('./db');
-const auth = require('./routes/auth');
+const authenticate = require('./routes/auth');
 const Moods = require('./routes/moods');
 const Users = require('./routes/user');
 
@@ -23,11 +23,52 @@ app.get('/', (req, res) => {
   res.send('Mood Tracker is up and running!');
 });
 
+// --- SIGNUP ---
+app.post('/signup', async (req, res) => {
+    const { username, email, password } = req.body;
+
+    const result = await Users.createUser({ username, email, password });
+    if (!result.success) return res.status(400).json({ error: result.error });
+
+    // Issue JWT
+    const token = jwt.sign({ user_id: result.data.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: result.data });
+});
+
+// --- LOGIN ---
+app.post('/login', async (req, res) => {
+    try { 
+        const { email, password } = req.body;
+
+        const result = await Users.verifyUser(email, password);
+        if (!result.success) return res.status(400).json({ error: result.error });
+
+        const token = jwt.sign({ user_id: result.data.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, user: result.data });
+    } catch (err) {
+        res.status(500).json({ error: err.message })};
+});
+
+app.post('login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const result = await Users.verifyUser(email, password);
+        if (!result.success) {
+            return res.status(400).json({ error: result.error });
+        }
+        res.json({ token: Users.generateToken(result.data) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+)
+
 // Mood routes
-app.post('api/create-mood-entry', auth, async (req, res) => {
+app.post('create-mood-entry', authenticate, async (req, res) => {
     try {
         const userId = req.user.user_id; // Get user ID from auth middleware
-        const moods = await Moods.createMoodEntry(userId, req.body);
+        const data = req.body;
+        const moods = await Moods.createMoodEntry(userId, data);
 
         if (!result.success) {
         return res.status(400).json({ error: result.error });
