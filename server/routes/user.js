@@ -68,6 +68,7 @@ class Users {
     // --- Create new user ---
     static async createUser({ username, email, password }) {
         try {
+            // Validate inputs
             if (!this.isValidUsername(username)) throw new Error('Invalid username');
             if (!this.isValidEmail(email)) throw new Error('Invalid email');
             
@@ -78,11 +79,12 @@ class Users {
             if (existingUserID) {
                 throw new Error('User already exists with this email');
             }
-
+            // Hash password
             const password_hash = await bcrypt.hash(password, 10);
+            // Insert into database
             const sql = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
             await db.query(sql, [username, email, password_hash]);
-
+            // Get the newly created user
             const { data: newUser } = await this.getUserByEmail(email);
             return { success: true, data: newUser };
         } catch (err) {
