@@ -1,0 +1,35 @@
+services:
+  mood-tracker-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+  
+  mood-tracker-client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./client:/app
+    depends_on:
+      - mood-tracker-server
+
+  db:
+    image: postgres:latest
+    environment:
+      NODE_ENV: ./.env
+    volumes:
+      - db_data:/postgresql/data
+    ports:
+      - "5332:5432"
