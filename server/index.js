@@ -5,6 +5,9 @@ const authenticate = require('./routes/auth');
 const Moods = require('./routes/moods');
 const Users = require('./routes/user');
 const jwt = require('jsonwebtoken');
+const Journals = require('./routes/journals'); // adjust path
+const Factors = require('./routes/factors'); // adjust path
+
 
 const app = express();
 app.use(cors({
@@ -147,15 +150,15 @@ app.get('/mood-history', authenticate, async (req, res) => {
 app.get('/mood-history', authenticate, async (req, res) => {
     try {
         const userId = req.user.user_id;
-        const filters = req.query; // Pass all query params to service
+        const {from, to} = req.query; // Pass all query params to service
 
-        const result = await Moods.getMoodEntriesByUserId(userId, filters);
+        const result = await Moods.getMoodEntriesByUserId(userId, {from, to});
 
         if (!result.success) {
             return res.status(400).json(result);
         }
 
-        res.json(result);
+        res.json(result.data);
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -205,6 +208,86 @@ app.delete('/delete-mood-entry/:entryId', authenticate, async (req, res) => {
     }
 });
 
+// CREATE journal entry
+app.post('/create-journal-entry', authenticate, async (req, res) => {
+    const { entry_id, content } = req.body;
+    const userId = req.user.user_id;
+
+    const result = await Journals.createJournalEntry(userId, entry_id, content);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// GET journal history
+app.get('/journal-history', authenticate, async (req, res) => {
+    try{
+        const { from, to } = req.query;
+        const userId = req.user.user_id;
+        const result = await Journals.getJournalEntries(userId, { from, to });
+        
+        if (!result.success) return res.status(400).json(result);
+        res.json(result.data);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// UPDATE journal entry
+app.put('/update-journal-entry/:journalId', authenticate, async (req, res) => {
+    const { journalId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.user_id;
+
+    const result = await Journals.updateJournalEntry(userId, parseInt(journalId), content);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// DELETE journal entry
+app.delete('/delete-journal-entry/:journalId', authenticate, async (req, res) => {
+    const { journalId } = req.params;
+    const userId = req.user.user_id;
+
+    const result = await Journals.deleteJournalEntry(userId, parseInt(journalId));
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// GET all factors (public)
+app.get('/factors', async (req, res) => {
+    const result = await Factors.getAllFactors();
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// CREATE factor (protected)
+app.post('/factors', authenticate, async (req, res) => {
+    const result = await Factors.createFactor(req.body);
+    if (!result.success) return res.status(400).json(result);
+    res.status(201).json(result);
+});
+
+// UPDATE factor (protected)
+app.put('/factors/:id', authenticate, async (req, res) => {
+    const factorId = parseInt(req.params.id, 10);
+    const result = await Factors.updateFactor(factorId, req.body);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// DELETE factor (protected)
+app.delete('/factors/:id', authenticate, async (req, res) => {
+    const factorId = parseInt(req.params.id, 10);
+    const result = await Factors.deleteFactor(factorId);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
 
 /* 
 You can  run Postman tests like:
@@ -220,8 +303,3 @@ GET /mood-history?mood=happy
 Combined: GET /mood-history?from=2025-08-01&rating=7&mood=stressed
 
 */ 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
