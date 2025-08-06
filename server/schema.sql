@@ -53,6 +53,9 @@ CREATE TABLE journal_entries (
 CREATE INDEX idx_mood_entries_user_id ON mood_entries(user_id);
 CREATE INDEX idx_mood_entries_timestamp ON mood_entries(timestamp);
 CREATE INDEX idx_mood_entries_user_timestamp ON mood_entries(user_id, timestamp);
+CREATE INDEX idx_mood_factors_entry_id ON mood_factors(entry_id);
+CREATE INDEX idx_journal_entries_timestamp ON journal_entries(timestamp);
+CREATE INDEX idx_journal_entries_user_id ON journal_entries(user_id);
 
 -- Prepopulate factors
 INSERT INTO factors (name, category, icon) VALUES
