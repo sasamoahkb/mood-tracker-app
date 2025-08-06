@@ -1,13 +1,13 @@
 -- schema.sql for Mood Tracker
 
--- Drop existing tables if recreating
+
 DROP TABLE IF EXISTS mood_factors CASCADE;
 DROP TABLE IF EXISTS journal_entries CASCADE;
 DROP TABLE IF EXISTS mood_entries CASCADE;
 DROP TABLE IF EXISTS factors CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- Core tables
+
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -134,3 +134,13 @@ ALTER TABLE mood_entries
 DROP CONSTRAINT mood_entries_user_id_fkey,
 ADD CONSTRAINT mood_entries_user_id_fkey
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE journal_entries
+DROP CONSTRAINT journal_entries_user_id_fkey,
+ADD CONSTRAINT journal_entries_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+ALTER TABLE journal_entries
+DROP CONSTRAINT journal_entries_entry_id_fkey,
+ADD CONSTRAINT journal_entries_entry_id_fkey
+    FOREIGN KEY (entry_id) REFERENCES mood_entries(entry_id) ON DELETE CASCADE;

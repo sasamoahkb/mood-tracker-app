@@ -14,9 +14,14 @@ class Journals {
     // Create a new journal entry   
     static async createJournalEntry(userId, entryId, content) {
         try {
+            console.log("DEBUG entryId:", entryId, "type:", typeof entryId, "userId:", userId);
+
             const validationError = this.isValidJournalEntry({content});
             if (validationError) return { success: false, error: validationError };
             
+            if (!Number.isInteger(entryId) || entryId <= 0) {
+                return { success: false, error: 'Valid entryId is required' };
+            }
             // Ensure mood entry belongs to the user
             const checkMoodSql = `SELECT * FROM mood_entries WHERE entry_id = $1 AND user_id = $2`;
             const checkMood = await db.query(checkMoodSql, [entryId, userId]);
@@ -73,19 +78,19 @@ class Journals {
             if (checkResult.rows.length === 0) {
                 return { success: false, error: 'No journal entry with that ID found' };
             }
-            
-            // Step 2: Check if the logged-in user owns the entry
-            if (result.rows[0].user_id !== userId) {
-                return { success: false, error: 'You do not have permission to update this journal entry' };
-            }
-            const sql = `
+           const sql = `
                 UPDATE journal_entries
                 SET content = $1
                 WHERE journal_id = $2 AND user_id = $3
                 RETURNING *
             `;
             const result = await db.query(sql, [content, journalId, userId]);
-
+ 
+            // Step 2: Check if the logged-in user owns the entry
+            if (result.rows[0].user_id !== userId) {
+                return { success: false, error: 'You do not have permission to update this journal entry' };
+            }
+            
             return { success: true, data: result.rows[0] };
         } catch (err) {
             return { success: false, error: err.message };

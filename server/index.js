@@ -7,9 +7,21 @@ const Users = require('./routes/user');
 const jwt = require('jsonwebtoken');
 const Journals = require('./routes/journals'); // adjust path
 const Factors = require('./routes/factors'); // adjust path
+const rateLimit = require('express-rate-limit');
 
-
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs   
+    message: {error: 'Too many requests, please try again later.'},
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 const app = express();
+
+// Apply rate limiting to authentication routes
+app.use('/login', authLimiter);
+app.use('/signup', authLimiter);
+
 app.use(cors({
     origin: 'http://localhost:3000', // Adjust to your frontend URL
     credentials: true
@@ -129,41 +141,40 @@ app.post('/create-mood-entry', authenticate, async (req, res) => {
     }
 });
 
-// --- GET MOOD HISTORY WITH OPTIONAL FILTERS ---
+// --- GET MOOD HISTORY WITH OPTIONAL FILTERS & PAGINATION ---
 app.get('/mood-history', authenticate, async (req, res) => {
     try {
         const userId = req.user.user_id;
-        const filters = req.query; // Pass all query params to service
 
+        // Extract all query parameters from the request
+        // These can include from, to, rating, mood, page, limit
+        const filters = {
+            from: req.query.from || null,
+            to: req.query.to || null,
+            rating: req.query.rating || null,
+            mood: req.query.mood || null,
+            page: parseInt(req.query.page) || 1, // Default page = 1
+            limit: parseInt(req.query.limit) || 10 // Default limit = 10 results per page
+        };
+
+        // Fetch mood entries from the database using the filters
         const result = await Moods.getMoodEntriesByUserId(userId, filters);
 
+        // If something went wrong, send error
         if (!result.success) {
             return res.status(400).json(result);
         }
 
+        // Success → send paginated results + metadata
         res.json(result);
+
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ 
+            success: false, 
+            error: err.message || 'Server error while fetching mood history'
+        });
     }
 });
-// --- GET MOOD HISTORY WITH OPTIONAL FILTERS ---
-app.get('/mood-history', authenticate, async (req, res) => {
-    try {
-        const userId = req.user.user_id;
-        const {from, to} = req.query; // Pass all query params to service
-
-        const result = await Moods.getMoodEntriesByUserId(userId, {from, to});
-
-        if (!result.success) {
-            return res.status(400).json(result);
-        }
-
-        res.json(result.data);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
 // --- UPDATE MOOD ENTRY ---
 app.put('/update-mood-entry/:entryId', authenticate, async (req, res) => {
     try {
