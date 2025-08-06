@@ -65,41 +65,63 @@ class Moods {
     }
 
     static async getMoodEntriesByUserId(userId, filters = {}) {
-        try {
-            const { from, to, rating, mood } = filters;
-            let sql = `SELECT * FROM mood_entries WHERE user_id = $1`;
-            const params = [userId];
-            let paramIndex = 2;
+    try {
+        const { from, to, rating, mood, page = 1, limit = 10 } = filters; 
+        // Default page = 1 (first page), limit = 10 (10 results per page)
 
-            if (from) {
-                sql += ` AND timestamp >= $${paramIndex++}`;
-                params.push(from);
-            }
-            if (to) {
-                sql += ` AND timestamp <= $${paramIndex++}`;
-                params.push(to);
-            }
-            if (rating) {
-                sql += ` AND mood_rating = $${paramIndex++}`;
-                params.push(parseInt(rating));
-            }
-            if (mood) {
-                sql += ` AND LOWER(mood) = LOWER($${paramIndex++})`;
-                params.push(mood);
-            }
+        let sql = `SELECT * FROM mood_entries WHERE user_id = $1`;
+        const params = [userId];
+        let paramIndex = 2;
 
-            sql += ` ORDER BY timestamp DESC`;
-
-            const results = await db.query(sql, params);
-
-            return {
-                success: true,
-                message: 'Mood history retrieved successfully',
-                data: results.rows
-            };
-        } catch (err) {
-            return { success: false, error: err.message };
+        // Optional filters
+        if (from) {
+            sql += ` AND timestamp >= $${paramIndex++}`;
+            params.push(from);
         }
+        if (to) {
+            sql += ` AND timestamp <= $${paramIndex++}`;
+            params.push(to);
+        }
+        if (rating) {
+            sql += ` AND mood_rating = $${paramIndex++}`;
+            params.push(parseInt(rating));
+        }
+        if (mood) {
+            sql += ` AND LOWER(mood) = LOWER($${paramIndex++})`;
+            params.push(mood);
+        }
+
+        // Sort newest → oldest
+        sql += ` ORDER BY timestamp DESC`;
+
+        // Pagination logic
+        const offset = (page - 1) * limit; // e.g., page 2 with limit 10 starts at record 10
+        sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+        params.push(limit, offset);
+
+        // Execute query
+        const results = await db.query(sql, params);
+
+        // Get total count (for front-end to know total pages available)
+        const countSql = `SELECT COUNT(*) FROM mood_entries WHERE user_id = $1`;
+        const countResult = await db.query(countSql, [userId]);
+        const totalItems = parseInt(countResult.rows[0].count);
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return {
+            success: true,
+            message: 'Mood history retrieved successfully',
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: parseInt(page),
+                pageSize: parseInt(limit)
+            },
+            data: results.rows
+        };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
     }
 
     static async updateMoodEntry(userId, entryId, updates) {
@@ -116,22 +138,25 @@ class Moods {
         }
 
         if (updates.mood) {
-            fields.push(`mood = $${++paramIndex}`);
+            fields.push(`mood = $${paramIndex++}`);
             values.push(updates.mood);
         }
-        if (updates.mood_rating) {
+
+        if (updates.mood_rating !== undefined) {
             if (!Number.isInteger(updates.mood_rating) || updates.mood_rating < 1 || updates.mood_rating > 10) {
                 return { success: false, error: 'Mood rating must be between 1 and 10' };
             }
-            fields.push(`mood_rating = $${++paramIndex}`);
+            fields.push(`mood_rating = $${paramIndex++}`);
             values.push(updates.mood_rating);
         }
-        if (updates.notes) {
-            fields.push(`notes = $${++paramIndex}`);
+
+        if (updates.notes !== undefined) {
+            fields.push(`notes = $${paramIndex++}`);
             values.push(updates.notes);
         }
-        if (updates.location) {
-            fields.push(`location = $${++paramIndex}`);
+
+        if (updates.location !== undefined) {
+            fields.push(`location = $${paramIndex++}`);
             values.push(updates.location);
         }
 
@@ -139,8 +164,19 @@ class Moods {
             return { success: false, error: 'No valid fields to update' };
         }
 
-        const sql = `UPDATE mood_entries SET ${fields.join(', ')} WHERE entry_id = $1 AND user_id = $2 RETURNING *`;
-        const result = await db.query(sql, [entryId, userId, ...values]);
+        // Add WHERE parameters
+        values.push(entryId);
+        values.push(userId);
+
+        // WHERE clause uses the last two parameters
+        const sql = `
+            UPDATE mood_entries
+            SET ${fields.join(', ')}
+            WHERE entry_id = $${paramIndex++} AND user_id = $${paramIndex}
+            RETURNING *
+        `;
+
+        const result = await db.query(sql, values);
 
         return { success: true, message: 'Mood entry updated successfully', data: result.rows[0] };
     } catch (err) {
