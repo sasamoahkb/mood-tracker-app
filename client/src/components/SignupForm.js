@@ -1,10 +1,11 @@
-// Building the SignupForm component
 import React, { useState } from 'react';
-import { loginUser } from '../api/api';
+import { useNavigate } from 'react-router-dom';
+import { signup } from '../services/api';
 
 const SignupForm = () => {
     const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const [error, setError] = useState('');
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
 
     const handleChange = (e) => {
@@ -12,25 +13,35 @@ const SignupForm = () => {
             ...prev,
             [e.target.name]: e.target.value
         }));
-    };  
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
         try {
-            const res = await registerUser(formData);
-            setUser(res.data.user);
-            localStorage.setItem('token', res.data.token); // Store token in localStorage
-            alert('Signup successful!');
+            const { token, user } = await signup(formData);
+
+            if (!token) {
+                setError('Signup failed — no token received.');
+                return;
+            }
+
+            // Save token & redirect to dashboard
+            setUser(user)
+            localStorage.setItem('authToken', token);
+            localStorage.setItem('user', JSON.stringify(formData.data));
+            navigate('/dashboard');
+
         } catch (err) {
-            setError(err.response?.data?.error || 'Login failed');
-        } 
+            setError(err.message || 'Sign up failed.');
+        }
     };
+
     return (
-        <div className="login-form">
+        <div className="signup-form">
             <h2>Sign up</h2>
-            {error && <p className="error">{error}</p>}
+            {error && <p style={{ color: 'red' }}>{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div>
                     <label>Username:</label>
@@ -41,6 +52,8 @@ const SignupForm = () => {
                         onChange={handleChange}
                         required
                     />
+                </div>
+                <div>
                     <label>Email:</label>
                     <input
                         type="email"
@@ -61,11 +74,9 @@ const SignupForm = () => {
                     />
                 </div>
                 <button type="submit">Register</button>
-                {error && <p style={{ color: 'red' }}>{error}</p>}
             </form>
-            {user && <p>Welcome, {user.username}!</p>}
         </div>
     );
 };
+
 export default SignupForm;
-// This component handles user login, manages form state, and displays error messages.

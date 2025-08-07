@@ -57,9 +57,13 @@ class Users {
             if (!Number.isInteger(userId)) {
                 return { success: false, error: 'Invalid user ID' };
             }
-            const sql = 'SELECT * FROM users WHERE user_id = $1';
+            const sql = 'SELECT user_id, username, email FROM users WHERE user_id = $1';
             const result = await db.query(sql, [userId]);
-            return { success: true, data: result.rows[0] || null, message: 'User retrieved successfully' };
+            return { 
+                success: true, 
+                data: result.rows[0] || null, 
+                message: 'User retrieved successfully' };
+                
         } catch (err) {
             return { success: false, error: err.message };
         }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createMoodEntry } from '../api/api';
+import { createMoodEntry } from '../services/api';
 import { getToken } from '../utils/auth';   
 
 const MoodForm = () => {

@@ -90,6 +90,12 @@ class Moods {
             sql += ` AND LOWER(mood) = LOWER($${paramIndex++})`;
             params.push(mood);
         }
+        // Apply LIMIT from filters if provided
+        if (filters.limit && Number.isInteger(filters.limit)) {
+            sql += ` LIMIT $${paramIndex++}`;
+            params.push(filters.limit);
+        }
+
 
         // Sort newest → oldest
         sql += ` ORDER BY timestamp DESC`;

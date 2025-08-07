@@ -1,11 +1,13 @@
 // Building the LoginForm component
 import React, { useState } from 'react';
-import { loginUser } from '../api/api';
+import { login } from '../services/api';
+import { useNavigate } from 'react-router-dom'
 
 const LoginForm = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [user, setUser] = useState(null);
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData((prev) => ({
@@ -19,10 +21,12 @@ const LoginForm = () => {
         setError('');
 
         try {
-            const res = await loginUser(formData);
+            const res = await login(formData);
             setUser(res.data.user);
             localStorage.setItem('token', res.data.token); // Store token in localStorage
             alert('Login successful!');
+            navigate('/dashboard');
+
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed');
         } 

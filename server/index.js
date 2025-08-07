@@ -23,7 +23,7 @@ app.use('/login', authLimiter);
 app.use('/signup', authLimiter);
 
 app.use(cors({
-    origin: 'http://localhost:3000', // Adjust to your frontend URL
+    origin: '"http://localhost:5000"', // Adjust to your frontend URL
     credentials: true
 }));
 app.use(express.json());
@@ -49,25 +49,31 @@ app.post('/signup', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long' });
         }
 
-        // Call service layer
+        // Create the user
         const result = await Users.createUser({ username, email, password });
-
         if (!result.success) {
             return res.status(400).json(result);
         }
 
+        // Generate JWT
         const token = jwt.sign(
-            { user_id: result.data.user_id },
+            { user_id: result.data.user_id, email: result.data.email },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
 
+        // Respond with token + user
         res.status(201).json({
             success: true,
-            message: result.message,
+            message: 'Signup successful!',
             token,
-            data: result.data
+            data: {
+                user_id: result.data.user_id,
+                username: result.data.username,
+                email: result.data.email
+            }
         });
+
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -292,6 +298,20 @@ app.delete('/factors/:id', authenticate, async (req, res) => {
     const result = await Factors.deleteFactor(factorId);
     if (!result.success) return res.status(400).json(result);
     res.json(result);
+});
+
+// --- GET CURRENT USER INFO ---
+app.get('/me', authenticate, async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+        const result = await Users.getUserById(userId);
+        if (!result.success || !result.data) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        res.json({ success: true, data: result.data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Start the server
